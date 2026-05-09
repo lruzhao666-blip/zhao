@@ -1183,6 +1183,15 @@
       </div>`;
     };
 
+    // ── 7. 其他动态（未知锚点）──
+    const renderMisc = (misc) => {
+      if (!misc || !misc.length) return '';
+      return `<div class="cd-section cd-section--misc">
+        <div class="cd-sec-label">其他动态</div>
+        <ul class="intel-list">${misc.map(s => `<li class="intel-item">${esc(s)}</li>`).join('')}</ul>
+      </div>`;
+    };
+
     // ── 三栏卡片 ──
     const cardsHtml = SLOT_CFG.map(cfg => {
       const ch    = changes.find(c => c.slot === cfg.slot);
@@ -1217,6 +1226,7 @@
         ${renderSeasonal(ch.seasonal)}
         ${renderDark(ch.darkItems)}
         ${renderIntel(ch.intel)}
+        ${renderMisc(ch.misc)}
         ${warningsHtml}
       </div>`;
     }).join('');
