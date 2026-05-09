@@ -792,6 +792,11 @@ window.SGParser = (function () {
         change.guards.push({ cityName: gm[1].trim(), newHolder: gm[2].trim(), prevHolder: gm[3] ? gm[3].trim() : null });
       }
 
+      if (/^(?:城|驻军|守将)△/.test(line)) {
+        anchor = null;
+        continue;
+      }
+
       /* ── 兵种变动：兵种△城名:骑+500,步-200 ── */
       /* ★ 兵种△ 行同时作为锚点重置触发器，阻止流入 anchor 分支 */
       if (/^兵种△/.test(line)) {
@@ -851,7 +856,6 @@ window.SGParser = (function () {
 
       if (/^(?:府库|暗账)△/.test(line)) {
         anchor = 'dark';
-        // 同行内容：府库△盐铺打点:金-40 / 暗账△（旧格式兼容）
         const rest = line.replace(/^(?:府库|暗账)△\s*/, '').trim();
         if (rest) _parseDarkLine(rest, change.darkItems);
         continue;
@@ -859,7 +863,6 @@ window.SGParser = (function () {
 
       if (/^季度△/.test(line)) {
         anchor = 'seasonal';
-        // 同行内容：季度△金-280,粮-420
         const rest = line.replace(/^季度△\s*/, '').trim();
         if (rest) _parseSeasonalLine(rest, change.seasonal);
         continue;
@@ -867,11 +870,15 @@ window.SGParser = (function () {
 
       if (/^情报△/.test(line)) {
         anchor = 'intel';
-        // 同行内容：情报△陈留粮市继续运转（跳过 NPC状态△ / 野外△）
         const rest = line.replace(/^情报△\s*/, '').trim();
         if (rest && !/^NPC|状态△|野外△/.test(rest))
           change.intel.push(rest.replace(/^[·•\-]\s*/, ''));
         continue;
+      }
+
+      // If the line defines a new unknown anchor (contains △ but not the ones above), reset anchor to null so it falls into misc.
+      if (/[^\s]+△/.test(line)) {
+        anchor = null;
       }
 
       /* ── 锚点内容解析 ── */
