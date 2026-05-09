@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>三国志文字版 — 战局实况</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css?v=20260508m" />
+</head>
+<body>
+
+<canvas id="particles-canvas"></canvas>
+
+<!-- ===== Header ===== -->
+<header id="site-header">
+  <div class="header-inner">
+    <div class="header-emblem">⚔️</div>
+    <div class="header-title-block">
+      <h1 class="header-title">三国志文字版</h1>
+      <p class="header-subtitle">战局实况 · 群雄逐鹿</p>
+    </div>
+    <div class="header-emblem">🏯</div>
+  </div>
+  <div class="header-divider"></div>
+  <div class="header-sync-bar">
+    <span id="sync-status" class="sync-status">☁️ 连接云端中…</span>
+  </div>
+</header>
+
+<!-- ===== Nav ===== -->
+<nav id="main-nav">
+  <button class="nav-btn active" data-tab="arena">⚔️ 战局总览</button>
+  <button class="nav-btn gm-nav-btn" data-tab="gm">🎴 GM 录入</button>
+</nav>
+
+<main id="main-content">
+
+<!-- ══════════════════════════════════════════
+     TAB 1：战局总览
+══════════════════════════════════════════ -->
+<section id="tab-arena" class="tab-panel active">
+  <div class="arena-wrap">
+
+    <!-- 空状态 -->
+    <div id="arena-empty" class="arena-empty">
+      <div class="ae-icon">⚔️</div>
+      <p class="ae-title">战局尚未开启</p>
+      <p class="ae-sub">等待 GM 录入第一回合内容…</p>
+    </div>
+
+    <!-- 有数据时显示 -->
+    <div id="arena-body" class="arena-body hidden">
+
+      <!-- ══ 行A：回合标题条 ══ -->
+      <div class="row-round-bar" id="row-round-bar">
+        <div class="rb-left">
+          <span class="rb-tag">第</span>
+          <span class="rb-num" id="rb-num">1</span>
+          <span class="rb-tag">回合</span>
+        </div>
+        <div class="rb-right">
+          <span class="rb-round-count" id="rb-round-count"></span>
+        </div>
+      </div>
+
+      <!-- ══ 行B：战局动态（合并天下大势 + 风云突变，自动高亮关键词）══ -->
+      <div class="info-block block-digest hidden" id="block-digest">
+        <div class="ib-header">
+          <span class="ib-icon ib-icon--text">动态</span>
+          <span class="ib-title">战局动态</span>
+          <span class="digest-tags" id="digest-tags"></span>
+        </div>
+        <div class="ib-body digest-body" id="digest-body"></div>
+      </div>
+
+      <!-- ══ 行B2：势力地图 ══ -->
+      <div class="info-block" id="block-map">
+        <div class="ib-header">
+          <span class="ib-icon ib-icon--text">地图</span>
+          <span class="ib-title">势力地图</span>
+          <span class="sgmap-legend" id="sgmap-legend"></span>
+        </div>
+        <div class="ib-body sgmap-body">
+          <div id="map-svg-container"></div>
+        </div>
+      </div>
+
+      <!-- ══ 行C：战斗结算（全宽）══ -->
+      <div class="info-block block-battles hidden" id="block-battles">
+        <div class="ib-header">
+          <span class="ib-icon">🔥</span>
+          <span class="ib-title">战斗结算</span>
+        </div>
+        <div class="ib-body" id="battles-list"></div>
+      </div>
+
+      <!-- ══ 行D：三方势力横排 ══ -->
+      <div class="info-block players-block">
+        <div class="ib-header">
+          <span class="ib-icon">👥</span>
+          <span class="ib-title">三方势力</span>
+        </div>
+        <div class="ib-body">
+          <div class="players-row" id="players-col">
+
+            <!-- 玩家卡 0 -->
+            <div class="pcard" id="pcard-0">
+              <div class="pcard-header p0-header">
+                <span class="pc-color-strip p0-strip"></span>
+                <div class="pc-identity">
+                  <span class="pc-name" id="pname-0">城主甲</span>
+                  <span class="pc-city" id="pcity-0"></span>
+                </div>
+                <div class="pc-status-badges" id="pc-badges-0"></div>
+              </div>
+              <div class="pc-resources">
+                <div class="pc-res-grid">
+                  <div class="res-cell"><span class="res-emoji">💰</span><b id="pgold-0">—</b><span class="res-name">金</span></div>
+                  <div class="res-cell"><span class="res-emoji">🌾</span><b id="pfood-0">—</b><span class="res-name">粮</span></div>
+                  <div class="res-cell"><span class="res-emoji">🛡️</span><b id="ptroop-0">—</b><span class="res-name">兵</span></div>
+                  <div class="res-cell"><span class="res-emoji">❤️</span><b id="pmorale-0">—</b><span class="res-name">民心</span></div>
+                  <div class="res-cell"><span class="res-emoji">🏯</span><b id="pcities-0">—</b><span class="res-name">城</span></div>
+                </div>
+                <div class="morale-bar-wrap">
+                  <div class="morale-bar-track"><div class="morale-bar-fill p0-fill" id="mbar-0"></div></div>
+                </div>
+              </div>
+              <div class="pc-generals" id="pc-generals-0">
+                <div class="gen-section-title">⚔️ 麾下武将</div>
+                <div class="gen-list gen-list-expand" id="gen-list-0">——</div>
+              </div>
+              <div class="pc-situation-note hidden" id="pc-note-0"></div>
+            </div>
+
+            <!-- 玩家卡 1 -->
+            <div class="pcard" id="pcard-1">
+              <div class="pcard-header p1-header">
+                <span class="pc-color-strip p1-strip"></span>
+                <div class="pc-identity">
+                  <span class="pc-name" id="pname-1">城主乙</span>
+                  <span class="pc-city" id="pcity-1"></span>
+                </div>
+                <div class="pc-status-badges" id="pc-badges-1"></div>
+              </div>
+              <div class="pc-resources">
+                <div class="pc-res-grid">
+                  <div class="res-cell"><span class="res-emoji">💰</span><b id="pgold-1">—</b><span class="res-name">金</span></div>
+                  <div class="res-cell"><span class="res-emoji">🌾</span><b id="pfood-1">—</b><span class="res-name">粮</span></div>
+                  <div class="res-cell"><span class="res-emoji">🛡️</span><b id="ptroop-1">—</b><span class="res-name">兵</span></div>
+                  <div class="res-cell"><span class="res-emoji">❤️</span><b id="pmorale-1">—</b><span class="res-name">民心</span></div>
+                  <div class="res-cell"><span class="res-emoji">🏯</span><b id="pcities-1">—</b><span class="res-name">城</span></div>
+                </div>
+                <div class="morale-bar-wrap">
+                  <div class="morale-bar-track"><div class="morale-bar-fill p1-fill" id="mbar-1"></div></div>
+                </div>
+              </div>
+              <div class="pc-generals" id="pc-generals-1">
+                <div class="gen-section-title">⚔️ 麾下武将</div>
+                <div class="gen-list gen-list-expand" id="gen-list-1">——</div>
+              </div>
+              <div class="pc-situation-note hidden" id="pc-note-1"></div>
+            </div>
+
+            <!-- 玩家卡 2 -->
+            <div class="pcard" id="pcard-2">
+              <div class="pcard-header p2-header">
+                <span class="pc-color-strip p2-strip"></span>
+                <div class="pc-identity">
+                  <span class="pc-name" id="pname-2">城主丙</span>
+                  <span class="pc-city" id="pcity-2"></span>
+                </div>
+                <div class="pc-status-badges" id="pc-badges-2"></div>
+              </div>
+              <div class="pc-resources">
+                <div class="pc-res-grid">
+                  <div class="res-cell"><span class="res-emoji">💰</span><b id="pgold-2">—</b><span class="res-name">金</span></div>
+                  <div class="res-cell"><span class="res-emoji">🌾</span><b id="pfood-2">—</b><span class="res-name">粮</span></div>
+                  <div class="res-cell"><span class="res-emoji">🛡️</span><b id="ptroop-2">—</b><span class="res-name">兵</span></div>
+                  <div class="res-cell"><span class="res-emoji">❤️</span><b id="pmorale-2">—</b><span class="res-name">民心</span></div>
+                  <div class="res-cell"><span class="res-emoji">🏯</span><b id="pcities-2">—</b><span class="res-name">城</span></div>
+                </div>
+                <div class="morale-bar-wrap">
+                  <div class="morale-bar-track"><div class="morale-bar-fill p2-fill" id="mbar-2"></div></div>
+                </div>
+              </div>
+              <div class="pc-generals" id="pc-generals-2">
+                <div class="gen-section-title">⚔️ 麾下武将</div>
+                <div class="gen-list gen-list-expand" id="gen-list-2">——</div>
+              </div>
+              <div class="pc-situation-note hidden" id="pc-note-2"></div>
+            </div>
+
+          </div><!-- /players-row -->
+        </div><!-- /ib-body -->
+      </div><!-- /players-block -->
+
+      <!-- ══ 行D：本回合收支详情 ══ -->
+      <div class="info-block block-changes-detail hidden" id="block-changes-detail">
+        <div class="ib-header">
+          <span class="ib-icon">📊</span>
+          <span class="ib-title">本回合收支详情</span>
+          <span class="ib-sub" id="changes-detail-sub"></span>
+        </div>
+        <div class="ib-body">
+          <div class="changes-cards-row" id="changes-cards-row"></div>
+        </div>
+      </div>
+
+      <!-- ══ 行F：历史回合折叠 ══ -->
+      <details class="history-details" id="history-details">
+        <summary class="history-summary-btn">
+          📚 历史回合记录
+          <span id="history-badge" class="history-badge">0</span>
+        </summary>
+        <div class="history-tab-bar" id="history-tab-bar"></div>
+        <div id="history-content" class="history-content"></div>
+      </details>
+
+    </div><!-- /arena-body -->
+  </div><!-- /arena-wrap -->
+</section>
+
+<!-- ══════════════════════════════════════════
+     TAB 2：GM 录入
+══════════════════════════════════════════ -->
+<section id="tab-gm" class="tab-panel">
+  <div class="gm-page">
+    <div class="gm-panel">
+
+      <div class="gm-ph">
+        <h2 class="gm-title">🎴 GM 录入台</h2>
+        <div class="gm-ph-btns">
+          <button id="btn-undo" class="btn-undo" disabled>↩️ 撤回上一步</button>
+        </div>
+      </div>
+
+      <p class="gm-hint">将 AI 输出的完整回合内容粘贴到下方，系统自动提取关键数据（资源、势力地图、回合选项），其余内容原文展示在战局动态。</p>
+
+      <div class="gm-form">
+        <div class="gm-field">
+          <label class="gm-lbl">📋 粘贴 AI 输出内容（整段粘贴即可）</label>
+          <textarea id="gm-content" class="gm-ta" rows="20"
+            placeholder="将 AI 主持人的整段输出粘贴到这里…"></textarea>
+        </div>
+
+        <div class="gm-actions">
+          <button id="btn-preview" class="btn-preview">👁️ 预览解析</button>
+          <button id="btn-publish" class="btn-publish">🚀 发布回合</button>
+          <button id="btn-clear-all" class="btn-danger">🗑️ 清空全部记录</button>
+        </div>
+      </div>
+
+      <div id="parse-preview" class="parse-preview hidden">
+        <div class="pp-title">🔍 解析预览</div>
+        <div id="parse-result" class="pp-result"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer id="site-footer">
+  <span>⚔️ 三国志文字版</span>
+  <span class="footer-sep">·</span>
+  <span id="footer-info">尚未开局</span>
+</footer>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="js/parser.js?v=20260508j"></script>
+<script src="js/map.js?v=20260505t"></script>
+<script src="js/main.js?v=20260508p"></script>
+</body>
+</html>
