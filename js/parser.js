@@ -39,11 +39,14 @@ window.SGParser = (function () {
     const codeBlock = codeM ? codeM[1] : rawText;
 
     // 2. 按分隔线切分
-    const sepIdx = codeBlock.indexOf(SEP);
+    const sepRegex = /={36,}/;
+    const match = codeBlock.match(sepRegex);
+    const sepIdx = match ? match.index : -1;
+    const SEP_LEN = match ? match[0].length : SEP.length;
     let storyZone, dataZone;
     if (sepIdx !== -1) {
       storyZone = codeBlock.slice(0, sepIdx).trim();
-      dataZone  = codeBlock.slice(sepIdx + SEP.length).trim();
+      dataZone  = codeBlock.slice(sepIdx + SEP_LEN).trim();
     } else {
       storyZone = codeBlock.trim();
       dataZone  = '';
@@ -388,9 +391,9 @@ window.SGParser = (function () {
     result.cityOwnership = _buildCityOwnership(result.players, result.npcCities);
 
     // 应用 兵种△ 变动
-    if (blocks['变动']) {
-      _applyTroopChanges(blocks['变动'], result.cityOwnership);
-    }
+    // if (blocks['变动']) {
+    //   _applyTroopChanges(blocks['变动'], result.cityOwnership);
+    // }
   }
 
   // ─────────────────────────────────────────
@@ -449,7 +452,7 @@ window.SGParser = (function () {
         continue;
       }
       // 资源行
-      const resM = line.match(/金[:：](\d+)\s+粮[:：](\d+)\s+兵[:：](\d+)\s+民心[:：](\d+)\s+城[:：](\d+)/);
+      const resM = line.match(/金[:：](-?\d+)\s+粮[:：](-?\d+)\s+兵[:：](-?\d+)\s+民心[:：](-?\d+)\s+城[:：](-?\d+)/);
       if (resM) {
         p.gold   = parseInt(resM[1]);
         p.food   = parseInt(resM[2]);
@@ -484,53 +487,52 @@ window.SGParser = (function () {
   //    城名(守将)                          ← 旧格式
   //    城名(无|无兵)                       ← 新格式空城
   // ─────────────────────────────────────────
+
+  function splitTopLevelComma(str) {
+    let result = [];
+    let current = "";
+    let depth = 0;
+    for (const ch of str) {
+      if (ch === "(" || ch === "（") depth++;
+      if (ch === ")" || ch === "）") depth--;
+      if ((ch === "," || ch === "，") && depth === 0) {
+        result.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim()) result.push(current);
+    return result;
+  }
+
   function _parseCityList(raw) {
     if (!raw || !raw.trim()) return [];
     const result = [];
-    // v2.7.9 解析铁律：标准格式 城名(守将/守将2|骑:3000,步:2000)
-    // 中文括号/全角逗号兼容，但发出警告
-    if (/[（）]/.test(raw)) {
-      console.warn('[SGParser] 城池行含中文括号（），建议改用英文括号(): ' + raw.slice(0,60));
-    }
-    if (/，/.test(raw)) {
-      console.warn('[SGParser] 城池行含全角逗号，，建议改用半角逗号,: ' + raw.slice(0,60));
-    }
-    // 匹配：城名(内容) 或 城名（内容）
-    const re = /([^,，、(（\s]+)[（(]([^）)]*)[）)]/g;
-    let m;
-    while ((m = re.exec(raw)) !== null) {
-      const name    = m[1].trim();
-      const inner   = m[2].trim();
-      if (!name) continue;
-
-      // v2.5：内部含 | → 分离守将和兵力
-      const pipeIdx = inner.indexOf('|');
-      let holderRaw, troopsRaw;
-      if (pipeIdx !== -1) {
-        holderRaw = inner.slice(0, pipeIdx).trim();
-        troopsRaw = inner.slice(pipeIdx + 1).trim();
+    const cityStrs = splitTopLevelComma(raw);
+    for (const cityStr of cityStrs) {
+      const m = cityStr.trim().match(/^([^(（]+)[(（](.*)[)）]$/);
+      if (m) {
+        const name = m[1].trim();
+        const inner = m[2].trim();
+        if (!name) continue;
+        const pipeIdx = inner.indexOf('|');
+        let holderRaw, troopsRaw;
+        if (pipeIdx !== -1) {
+          holderRaw = inner.slice(0, pipeIdx).trim();
+          troopsRaw = inner.slice(pipeIdx + 1).trim();
+        } else {
+          holderRaw = inner;
+          troopsRaw = null;
+        }
+        const holders = holderRaw === '无' ? [] : holderRaw.split('/').map(s => s.trim()).filter(Boolean);
+        const holder  = holders.join('/') || '无';
+        const troops = _parseTroops(troopsRaw);
+        result.push({ name, holder, troops });
       } else {
-        // 旧格式：内部全部视为守将
-        holderRaw = inner;
-        troopsRaw = null;
-      }
-
-      // 守将：支持 / 分隔多将，"无" → ''
-      const holders = holderRaw === '无' ? [] : holderRaw.split('/').map(s => s.trim()).filter(Boolean);
-      const holder  = holders.join('/') || '无';
-
-      // 兵力
-      const troops = _parseTroops(troopsRaw);
-
-      result.push({ name, holder, troops });
-    }
-
-    // 兼容无括号纯城名列表
-    if (!result.length) {
-      raw.split(/[,，、\s]+/).forEach(s => {
-        const n = s.trim();
+        const n = cityStr.trim();
         if (n) result.push({ name: n, holder: '无', troops: {} });
-      });
+      }
     }
     return result;
   }
@@ -723,11 +725,16 @@ window.SGParser = (function () {
       // 例：NPC 虎牢关状态△吕布更换西门巡夜 阳平关状态△杨任修补坡道
       const reCityStr = '([^\\s△]+)状态△([^△]+?)(?=\\s+[^\\s△]+状态△|\\s*野外△|\\s*$)';
       const reCity = new RegExp(reCityStr, 'g');
+      const wm = line.match(/^野外△[:：]?(.*)/);
+      if (wm) {
+        events.push({ type: 'wild', city: '野外', desc: wm[1].trim() });
+        continue;
+      }
+
       const reWild = /野外△([^△]+?)(?=\s+野外△|\s*$)/g;
       let m;
       while ((m = reCity.exec(line)) !== null) {
         const city = m[1].trim();
-        // 跳过「NPC」「NPC状态」本身被误匹配为城名
         if (city === 'NPC' || city === 'NPC状态') continue;
         events.push({ type: 'npc', city, desc: m[2].trim() });
       }
@@ -751,6 +758,7 @@ window.SGParser = (function () {
       seasonal:     [],   // 季度△ 条目 [{res,val}]
       intel:        [],   // 情报△ 条目 [string]
       warnings:     [],   // 校验报警 [string]
+      misc:         [],   // 未知锚点容错
     };
 
     const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
@@ -761,7 +769,7 @@ window.SGParser = (function () {
     for (const line of lines) {
 
       /* ── 总变化行：金△+200 粮△-100 … ── */
-      const resRe = /(金|粮|兵|民心|城)△([+-]?\d+)/g;
+      const resRe = /(金|粮|兵|民心|城)△([+-]?\d+)(?:[（(]([^）)]+)[）)])?/g;
       let rm;
       while ((rm = resRe.exec(line)) !== null) {
         change.resources[rm[1]] = parseInt(rm[2]);
@@ -779,6 +787,11 @@ window.SGParser = (function () {
       let gm;
       while ((gm = guardRe.exec(line)) !== null) {
         change.guards.push({ cityName: gm[1].trim(), newHolder: gm[2].trim(), prevHolder: gm[3] ? gm[3].trim() : null });
+      }
+
+      if (/^(?:城|驻军|守将)△/.test(line)) {
+        anchor = null;
+        continue;
       }
 
       /* ── 兵种变动：兵种△城名:骑+500,步-200 ── */
@@ -840,7 +853,6 @@ window.SGParser = (function () {
 
       if (/^(?:府库|暗账)△/.test(line)) {
         anchor = 'dark';
-        // 同行内容：府库△盐铺打点:金-40 / 暗账△（旧格式兼容）
         const rest = line.replace(/^(?:府库|暗账)△\s*/, '').trim();
         if (rest) _parseDarkLine(rest, change.darkItems);
         continue;
@@ -848,7 +860,6 @@ window.SGParser = (function () {
 
       if (/^季度△/.test(line)) {
         anchor = 'seasonal';
-        // 同行内容：季度△金-280,粮-420
         const rest = line.replace(/^季度△\s*/, '').trim();
         if (rest) _parseSeasonalLine(rest, change.seasonal);
         continue;
@@ -856,11 +867,15 @@ window.SGParser = (function () {
 
       if (/^情报△/.test(line)) {
         anchor = 'intel';
-        // 同行内容：情报△陈留粮市继续运转（跳过 NPC状态△ / 野外△）
         const rest = line.replace(/^情报△\s*/, '').trim();
         if (rest && !/^NPC|状态△|野外△/.test(rest))
           change.intel.push(rest.replace(/^[·•\-]\s*/, ''));
         continue;
+      }
+
+      // If the line defines a new unknown anchor (contains △ but not the ones above), reset anchor to null so it falls into misc.
+      if (/[^\s]+△/.test(line)) {
+        anchor = null;
       }
 
       /* ── 锚点内容解析 ── */
@@ -872,15 +887,21 @@ window.SGParser = (function () {
           const cat   = catM[1];
           const rest2 = catM[2];
           const items = [];
-          const itemRe = /([^\s,，·|·+\-\d合计][^,，·\d+\-]*?)([+-]\d+)/g;
-          let im;
-          while ((im = itemRe.exec(rest2)) !== null) {
-            let lbl = im[1].replace(/[→:：]/g,'').trim();
-            if (lbl === '暗账') lbl = '府库';   // v2.7.9 统一命名
-            if (lbl && lbl !== '合') items.push({ label: lbl, val: parseInt(im[2]) });
+          const parts = rest2.split(/[,，]/);
+          let total = null;
+          for (const p of parts) {
+            const im = p.trim().match(/^([^+-]+)([+-]\d+)$/);
+            if (im) {
+              let lbl = im[1].trim();
+              if (lbl === '合计') {
+                total = parseInt(im[2]);
+              } else {
+                if (lbl === '暗账') lbl = '府库';
+                items.push({ label: lbl, val: parseInt(im[2]) });
+              }
+            }
           }
-          const totalM = rest2.match(/合计([+-]?\d+)/);
-          change.breakdown[cat] = { items, total: totalM ? parseInt(totalM[1]) : null };
+          change.breakdown[cat] = { items, total };
         }
       } else if (anchor === 'dark') {
         // 防线：跳过任何含 兵种△ 的行（已由上方处理并 continue）
@@ -891,6 +912,11 @@ window.SGParser = (function () {
         // 过滤 NPC状态△ / 野外△ 行：属于天下动态，不进情报
         if (line && !/^NPC|状态△|野外△/.test(line))
           change.intel.push(line.replace(/^[·•\-]\s*/, ''));
+      } else {
+        // 未知锚点容错
+        if (/△/.test(line) && anchor === null && !/^[金粮兵民心城]△/.test(line)) {
+            change.misc.push(line);
+        }
       }
     }
 
