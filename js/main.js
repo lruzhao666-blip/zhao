@@ -201,8 +201,14 @@
     document.getElementById('btn-undo').addEventListener('click', onUndo);
   }
 
+  function normalizeGMInput(raw) {
+    if (!raw) return '';
+    // 兼容网页/IM 中带来的转义换行：\n / \r\n
+    return String(raw).replace(/\\r\\n|\\n/g, '\n').trim();
+  }
+
   function onPreview() {
-    const raw = document.getElementById('gm-content').value.trim();
+    const raw = normalizeGMInput(document.getElementById('gm-content').value);
     if (!raw) { showToast('⚠️ 请先粘贴内容'); return; }
     const parsed = SGParser.parse(raw);
     showParsePreview(parsed);
@@ -210,7 +216,7 @@
 
   async function onPublish() {
     if (state.publishing) return;
-    const raw = document.getElementById('gm-content').value.trim();
+    const raw = normalizeGMInput(document.getElementById('gm-content').value);
     if (!raw) { showToast('⚠️ 内容不能为空'); return; }
 
     // 回合号 = 当前最大回合 + 1（自动递增）
