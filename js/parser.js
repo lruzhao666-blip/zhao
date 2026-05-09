@@ -907,8 +907,9 @@ window.SGParser = (function () {
           change.breakdown[cat] = { items, total };
         }
       } else if (anchor === 'dark') {
-        // 防线：跳过任何含 兵种△ 的行（已由上方处理并 continue）
-        if (line && !/兵种△/.test(line)) _parseDarkLine(line, change.darkItems);
+        // 防线：仅解析真正的府库条目，避免把 城△/驻军△ 等结构化行误吞进来
+        const STRUCTURAL_RE = /^(?:城|驻军|守将|兵种|收支|季度|情报|NPC状态|野外)△/;
+        if (line && !STRUCTURAL_RE.test(line)) _parseDarkLine(line, change.darkItems);
       } else if (anchor === 'seasonal') {
         _parseSeasonalLine(line, change.seasonal);
       } else if (anchor === 'intel') {
